@@ -1,0 +1,5 @@
+make --dry-run --keep-going --print-directory
+make: Entering directory '/home/portal/Projects/imv'
+fltk-config --compile src/app.cpp --use-images
+make: Leaving directory '/home/portal/Projects/imv'
+ 

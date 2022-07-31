@@ -1,123 +1,135 @@
 #include "trunk.hpp"
-#include <FL/Enumerations.H>
-#include <FL/Fl_Pixmap.H>
-#include <FL/Fl_Tiled_Image.H>
-#include <FL/fl_utf8.h>
+#include <iostream>
+
+const short WIN_W = 800;
+const short WIN_H = 650;
+const short WIN_BAR_SIZE = 50;
 
 void panic(const char *msg) {
   std::cout << msg;
   exit(0);
 }
 
-#include <unistd.h>
-int main(int argc, char **argv) {
+class App : public Fl_Window {
+private:
+  vector<char*> images;
+  ImageBox *picture_box;
+  Widget *info_box;
+  // Widget *counter;
+  Widget *size_display;
+  int current = -1;
+  Fl_Menu_Item *items;
+  void build_ui();
+  void build_menu();
+public:
+  App(vector<char*> images);
+  int handle(int event) override;
+  void run();
+  ~App();
+  void next_image();
+};
 
-  // Get full path to current working directorry
-  string parent_dir;
-  string filename;
-  string path;
+App::~App() {
+  // Cleanup memory before dieing
 
-  if (argc == 1) {
-    char cwd[1024];
-    getcwd(cwd, 1024);
-    parent_dir = cwd;
-    parent_dir += "/";
-  } else {
-    path = realpath(argv[1], NULL);
-    filename = basename(path.c_str());
-    parent_dir = path;
-    parent_dir.resize(parent_dir.length() - filename.length());
+  free(items);
+  for (auto i : images) {
+    free(i);
+  }
+  auto i = picture_box->get_image();
+  delete i;
+}
+
+void App::next_image() {
+  current++;
+  if (current >= (int)images.size()) {
+    current = 0;
   }
 
-  EventWindow *window = new EventWindow(WIN_W, WIN_H, "imv");
-  window->resizable(window);
-  window->color(0x00000000);
+  char* path = images[current];
 
-  vector<string> images = walk(&parent_dir);
-  int ti = images.size();
-  if (path.empty()) {
-    path = parent_dir + images[0];
-    cout << path;
-    filename = basename(path.c_str());
+  picture_box->load_image(path);
+  Fl_Image *image = picture_box->get_image();
+
+  char size_display_str[100];
+  snprintf(size_display_str, 100, "%d x %d", image->w(), image->h());
+  size_display->label(size_display_str);
+
+  //info_box->label(basename(path.c_str()));
+  //info_box->redraw();
+}
+
+int App::handle(int event) {
+  switch (event) {
+  case FL_PUSH:
+    if (Fl::event_button() == FL_LEFT_MOUSE) {
+      next_image();
+    } else if (Fl::event_button() == FL_RIGHT_MOUSE) {
+      auto x = items->popup(50,50);
+      if (x != NULL && x->callback() != NULL) {
+        x->do_callback(this);
+      }
+    }
+  default:
+    Fl_Window::handle(event);
   }
+  return 0;
+}
 
-  ImageBox *pbox = new ImageBox(0, 0, WIN_W, WIN_H - WIN_BAR_SIZE, "");
-  pbox->load_image(path);
+App::App(vector<char*> _images) : Fl_Window(WIN_W, WIN_H, "imv") {
+  images = _images;
+  build_ui();
+  build_menu();
+}
 
-  Fl_Box *ibox = new Fl_Box(0, WIN_H - WIN_BAR_SIZE, WIN_W, WIN_BAR_SIZE,
-                            filename.c_str());
-  ibox->box(FL_FLAT_BOX);
-  ibox->color(0x87CEEB00);
+void App::build_menu() {
 
-  string count = "1/";
-  count += to_string(ti);
+  auto dither_m = [](Fl_Widget *_, void* __){
+    auto picture_box = _->as_group()->array()[0];
+    auto picture_box_view = _->as_group()->array()[1];
+    auto dithered = dither(picture_box_view->image());
+    ImageBox::adapt(dithered, picture_box, picture_box_view);
+  };
 
-  Fl_Box *counter = new Fl_Box(WIN_W - WIN_BAR_SIZE, WIN_H - WIN_BAR_SIZE,
-                               WIN_BAR_SIZE / 2, WIN_BAR_SIZE, count.c_str());
-  counter->labelfont(FL_COURIER_BOLD);
-  counter->labelcolor(fl_darker(fl_darker(0x87CEEB00)));
+  auto grayscale_m = [](Fl_Widget *_, void*__) {
+    auto picture_box = _->as_group()->array()[0];
+    auto picture_box_view = _->as_group()->array()[1];
+    picture_box_view->image()->desaturate();
+    picture_box_view->redraw();
+    picture_box->redraw();
+  };
 
-  Fl_Box *size_display = new Fl_Box(WIN_BAR_SIZE, WIN_H - WIN_BAR_SIZE,
-                                    WIN_BAR_SIZE / 2, WIN_BAR_SIZE, "");
+  items = (Fl_Menu_Item*)malloc(sizeof(Fl_Menu_Item) * 4);
+  items[0] = {"Test",0,0,0};
+  items[1] = {"Dither",0,dither_m,0};
+  items[2] = {"Greyscale", 0, grayscale_m, 0};
+  items[3] = {0};
+}
+
+void App::build_ui() {
+  color(0x00000000);
+
+  picture_box = new ImageBox(0, 0, WIN_W, WIN_H - WIN_BAR_SIZE, "PBOX");
+
+  info_box = new Fl_Box(0, WIN_H - WIN_BAR_SIZE, WIN_W, WIN_BAR_SIZE, "");
+  info_box->box(FL_FLAT_BOX);
+  info_box->color(0x87CEEB00);
+
+  size_display = new Fl_Box(WIN_BAR_SIZE, WIN_H - WIN_BAR_SIZE,
+                            WIN_BAR_SIZE / 2, WIN_BAR_SIZE, "");
   size_display->labelfont(FL_COURIER);
   size_display->labelcolor(fl_darker(fl_darker(0x87CEEB00)));
+  end();
+  show();
+}
 
-  int cursor = 0;
+void App::run() { Fl::run(); }
 
-  Fl::lock();
-  window->end();
-  window->show();
-  int *message;
-
-  Fl_Menu_Item menu_items[] = {{"About", 0, about_info, 0},
-                               {"Help", 0, 0, 0},
-                               //  {"Image Info", 0, image_info, 0},
-                               {0}};
-
-  while (Fl::wait()) {
-    if ((message = (int *)Fl::thread_message()) == NULL) {
-      continue;
-    }
-
-    if (*message == CUSTOM_RESIZE_EVENT) {
-      pbox->redraw();
-      continue;
-    }
-
-    if (Fl::event_button() == FL_LEFT_MOUSE) {
-      cursor++;
-
-      if (cursor >= ti) {
-        cursor = 0;
-        continue;
-      }
-
-      pbox->load_image(parent_dir + images[cursor]);
-      auto image = pbox->get_image();
-
-      counter->label(
-          (std::to_string(cursor + 1) + "/" + std::to_string(ti)).c_str());
-      counter->redraw_label();
-
-      size_display->label(
-          (std::to_string(image->w()) + "x" + std::to_string(image->h()))
-              .c_str());
-      size_display->redraw_label();
-
-      ibox->label(images[cursor].c_str());
-
-      if (cursor + 1 == ti) {
-        cursor = -1;
-      }
-
-    } else if (Fl::event_button() == FL_RIGHT_MOUSE) {
-
-      const Fl_Menu_Item *p = menu_items->popup(50, 50);
-      if (p != NULL) {
-        auto cb = p->callback();
-        if (cb != NULL)
-          cb(window, p->user_data());
-      }
-    }
-  }
+#include <unistd.h>
+int main(int argc, char **argv) {
+  vector<char*> images = cmdl(argc, argv);
+  auto a = new App(images);
+  a->next_image();
+  a->run();
+  delete a;
 }
