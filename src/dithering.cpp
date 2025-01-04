@@ -1,8 +1,10 @@
 #include "trunk.hpp"
 
+#define byte unsigned char
+
 Fl_Image *dither(Fl_Image *target) {
     auto copy = target->copy();
-    cout << "DEPTH: " << copy->d() << endl;
+    std::cout << "DEPTH: " << copy->d() << std::endl;
     int line = copy->w();
     int lines = copy->h();
     int pixels = line * lines;
@@ -37,7 +39,7 @@ Fl_Image *dither(Fl_Image *target) {
     delete copy;
 
     if (x == NULL || x->fail() != 0) {
-        cout << "FAILED TO DITHER IMAGE!" << endl;
+	    std::cout << "FAILED TO DITHER IMAGE!" << std::endl;
         return target;
     }
 

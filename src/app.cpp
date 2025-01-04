@@ -1,9 +1,12 @@
 #include "trunk.hpp"
+#include <unistd.h>
 #include <iostream>
 
-const short WIN_W = 800;
-const short WIN_H = 650;
-const short WIN_BAR_SIZE = 50;
+using namespace std;
+
+const int WIN_W = 800;
+const int WIN_H = 650;
+const int WIN_BAR_SIZE = 50;
 
 void panic(const char *msg) {
   std::cout << msg;
@@ -12,7 +15,7 @@ void panic(const char *msg) {
 
 class App : public Fl_Window {
 private:
-  vector<char*> images;
+  vector<string> images;
   ImageBox *picture_box;
   Widget *info_box;
   // Widget *counter;
@@ -22,7 +25,7 @@ private:
   void build_ui();
   void build_menu();
 public:
-  App(vector<char*> images);
+  App(vector<string> images);
   int handle(int event) override;
   void run();
   ~App();
@@ -33,9 +36,6 @@ App::~App() {
   // Cleanup memory before dieing
 
   free(items);
-  for (auto i : images) {
-    free(i);
-  }
   auto i = picture_box->get_image();
   delete i;
 }
@@ -46,9 +46,8 @@ void App::next_image() {
     current = 0;
   }
 
-  char* path = images[current];
-
-  picture_box->load_image(path);
+  auto path = images[current].c_str();
+  picture_box->load_image((char*)path);
   Fl_Image *image = picture_box->get_image();
 
   char size_display_str[100];
@@ -76,7 +75,7 @@ int App::handle(int event) {
   return 0;
 }
 
-App::App(vector<char*> _images) : Fl_Window(WIN_W, WIN_H, "imv") {
+App::App(vector<std::string> _images) : Fl_Window(WIN_W, WIN_H, "imv") {
   images = _images;
   build_ui();
   build_menu();
@@ -125,9 +124,8 @@ void App::build_ui() {
 
 void App::run() { Fl::run(); }
 
-#include <unistd.h>
 int main(int argc, char **argv) {
-  vector<char*> images = cmdl(argc, argv);
+  auto images = cmdl(argc, argv);
   auto a = new App(images);
   a->next_image();
   a->run();

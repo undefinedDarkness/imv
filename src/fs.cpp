@@ -1,28 +1,32 @@
 #include "trunk.hpp"
 #include <cstring>
 #include <dirent.h>
+#include <filesystem>
 
-vector<char*> walk(const char* dir) {
-  cout << "READING DIRECTORY: " << dir << endl;
-  DIR *d = opendir(dir);
-  dirent *entry;
-  vector<char*> paths;
-  int path_size = strlen(dir) + 1 + 50 + 1;
-  while ((entry = readdir(d))) {
-    if (entry->d_type == DT_REG) {
-      if (strcmp(extname(entry->d_name), ".png") == 0 ||
-          strcmp(extname(entry->d_name), ".jpg") == 0) {
-          char *path = (char*)malloc(path_size);
-          strcpy(path, dir);
-          strcat(path, "/");
-          strcat(path, entry->d_name);
-          paths.push_back(path);
-      }
+std::vector<std::string> walk(const std::string& dir) {
+    using namespace std;
+    namespace fs = std::filesystem;
+
+    cout << "READING DIRECTORY: " << dir << endl;
+
+    vector<string> paths;
+
+    try {
+        for (const auto& entry : fs::directory_iterator(dir)) {
+            if (entry.is_regular_file()) {
+                auto ext = entry.path().extension().string();
+                if (ext == ".png" || ext == ".jpg") {
+                    paths.push_back(entry.path().string());
+                }
+            }
+        }
+    } catch (const fs::filesystem_error& e) {
+        cerr << "Filesystem error: " << e.what() << endl;
+    } catch (const std::exception& e) {
+        cerr << "Error: " << e.what() << endl;
     }
-  }
 
-  closedir(d);
-  return paths;
+    return paths;
 }
 
 // Get the extension of a file name, e.g. ".png". using char*
@@ -34,17 +38,17 @@ char *extname(char *filename) {
   return ext;
 }
 
-std::string extname(string &filename) {
+std::string extname(std::string &filename) {
   int l = filename.find_last_of('.');
   return filename.substr(l, filename.size() - l);
 }
 
-vector<char*> cmdl(int argc, char** argv) {
+std::vector<std::string> cmdl(int argc, char** argv) {
 
   // Get full path to current working directorry
-  string parent_dir;
-  string filename;
-  string path;
+	std::string parent_dir;
+	std::string filename;
+	std::string path;
 
   if (argc == 1) {
     char cwd[1024];
@@ -61,6 +65,6 @@ vector<char*> cmdl(int argc, char** argv) {
     parent_dir.resize(parent_dir.length() - filename.length());
   }
 
-  vector<char*> images = walk(parent_dir.c_str());
+  auto images = walk(parent_dir);
   return images;
 }

@@ -9,7 +9,6 @@
 
 #include <unistd.h>
 
-using namespace std;
 
 // -- Import FLTK --
 #include <FL/Fl_Image.H>
@@ -22,17 +21,17 @@ using namespace std;
 #include <Fl/Fl_Menu_Item.H>
 #include <FL/Fl_Window.H>
 
-typedef unsigned char byte;
+// typedef unsigned char byte;
 typedef Fl_Box Widget;
 char *extname(char *filename);
-std::string extname(string &filename);
-vector<char*> walk(const char* dir);
+std::string extname(std::string &filename);
+std::vector<char*> walk(const char* dir);
 
 void about_info(Fl_Widget *_, void *__);
 void image_info(Fl_Widget *_, void *__);
 Fl_Image *dither(Fl_Image *target);
 
-vector<char*> cmdl(int argc, char** argv);
+std::vector<std::string> cmdl(int argc, char** argv);
 
 class ImageBox : public Fl_Box {
     private:

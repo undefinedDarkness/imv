@@ -42,7 +42,7 @@ int ImageBox::adapt(Fl_Image *image, Fl_Widget *self, Fl_Widget* view) {
   if (iw > self->w() && ih > self->h()) {
     int fw = resize_by_halfs(image->w(), self->w());
     int fh = resize_by_halfs(image->h(), self->h());
-    int f = min(fw, fh);
+    int f = std::min(fw, fh);
     auto _image = (Fl_RGB_Image *)image->copy(iw / f, ih / f);
     delete image; // Delete old copy
     image = _image;
